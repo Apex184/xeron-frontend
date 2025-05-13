@@ -1,43 +1,36 @@
 const express = require('express');
 const path = require('path');
-const app = express();
 const dotenv = require('dotenv');
 
 dotenv.config();
 
+const app = express();
 const PORT = process.env.PORT || 3000;
-const NODE_ENV = process.env.NODE_ENV || 'development';
-let BASE_URL;
 
-if (NODE_ENV === 'production') {
-    BASE_URL = process.env.BASE_URL;
-} else {
-    BASE_URL = process.env.BASE_URL_DEV + ':' + PORT;
-}
+// Serve static files from the dist directory
+app.use(express.static(path.join(__dirname, 'dist')));
 
-// Serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, 'public')));
+// API endpoint for waitlist
+app.post('/api/waitlist', express.json(), async (req, res) => {
+    try {
+        const { email, name } = req.body;
 
-// Parse JSON and URL-encoded data
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+        // Here you can add your database logic to store the waitlist entries
+        // For now, we'll just return a success response
+        console.log('New waitlist entry:', { email, name });
 
-// Set up a route for the home page
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+        res.status(200).json({ message: 'Successfully joined waitlist' });
+    } catch (error) {
+        console.error('Error processing waitlist entry:', error);
+        res.status(500).json({ error: 'Failed to process waitlist entry' });
+    }
 });
 
-// API endpoint example
-app.get('/api/data', (req, res) => {
-    res.json({
-        message: 'Hello from the backend!',
-        baseUrl: BASE_URL,
-        environment: NODE_ENV
-    });
+// Handle all other routes by serving the React app
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Environment: ${NODE_ENV}`);
-    console.log(`Base URL: ${BASE_URL}`);
+    console.log(`Server is running on port ${PORT}`);
 });
