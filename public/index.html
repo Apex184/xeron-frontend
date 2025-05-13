@@ -1,0 +1,2288 @@
+<script type="text/javascript">
+    var gk_isXlsx = false;
+    var gk_xlsxFileLookup = {};
+    var gk_fileData = {};
+    function filledCell(cell) {
+        return cell !== "" && cell != null;
+    }
+    function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], {
+                    type: "base64",
+                });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, {
+                    header: 1,
+                    blankrows: false,
+                    defval: "",
+                });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter((row) =>
+                    row.some(filledCell)
+                );
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex(
+                    (row, index) =>
+                        row.filter(filledCell).length >=
+                        filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                    headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(
+                    filteredData.slice(headerRowIndex)
+                ); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+    }
+</script>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Xerion - Your Enterprise Team Companion</title>
+        <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/babel-standalone@7.22.5/babel.min.js"></script>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            body {
+                font-family: "Inter", sans-serif;
+                background: #0f172a;
+            }
+            .hero-bg {
+                background-image: linear-gradient(
+                        rgba(0, 0, 0, 0.85),
+                        rgba(0, 0, 0, 0.85)
+                    ),
+                    url("https://images.unsplash.com/photo-1516321310767-90b742c5e8b8?auto=format&fit=crop&w=1920&q=80");
+                background-size: cover;
+                background-position: center;
+            }
+            .frosted-glass {
+                background: rgba(255, 255, 255, 0.15);
+                backdrop-filter: blur(60px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 16px;
+            }
+            .accordion-item {
+                transition: all 0.2s ease;
+            }
+            .accordion-item.active .accordion-content {
+                max-height: 300px;
+            }
+            .accordion-content {
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+            }
+            .reaction-btn:hover {
+                transform: scale(1.2);
+            }
+            .countdown {
+                font-variant-numeric: tabular-nums;
+            }
+            .team-card,
+            .advisor-card {
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+                background: linear-gradient(135deg, #1e3a8a, #06b6d4);
+                border-radius: 16px;
+                overflow: hidden;
+            }
+            .team-card:hover,
+            .advisor-card:hover {
+                transform: translateY(-10px);
+                box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+            }
+            .feature-card {
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+            .feature-card:hover {
+                transform: scale(1.05);
+                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            }
+            .iphone-mockup {
+                transform: perspective(1200px) rotateY(-15deg);
+                transition: transform 0.5s ease;
+            }
+            .iphone-mockup:hover {
+                transform: perspective(1200px) rotateY(0deg);
+            }
+            .dashboard-container {
+                max-width: 900px;
+                margin: 0 auto;
+                transition: max-height 0.3s ease, opacity 0.3s ease;
+                overflow: hidden;
+            }
+            .dashboard-container.closed {
+                max-height: 0;
+                opacity: 0;
+            }
+            .dashboard-container.open {
+                max-height: 1200px;
+                opacity: 1;
+            }
+            .gradient-text {
+                background: linear-gradient(to right, #06b6d4, #3b82f6);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            .section-title {
+                position: relative;
+                color: white;
+            }
+            .section-title::after {
+                content: "";
+                position: absolute;
+                bottom: -8px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 120px;
+                height: 4px;
+                background: linear-gradient(to right, #06b6d4, #3b82f6);
+            }
+            .neumorphic {
+                box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.3),
+                    -5px -5px 10px rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .fade-in {
+                animation: fadeIn 0.5s ease-in;
+            }
+            @keyframes fadeIn {
+                0% {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                100% {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            .calendar-container {
+                background: linear-gradient(135deg, #1e40af, #06b6d4);
+                border-radius: 16px;
+                padding: 20px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+                max-width: 400px;
+                margin: 0 auto;
+            }
+            .timezone-select {
+                background: rgba(255, 255, 255, 0.1);
+                color: white;
+                border-radius: 8px;
+                padding: 10px;
+            }
+            .btn-primary {
+                background: linear-gradient(to right, #06b6d4, #3b82f6);
+                color: white;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+                border-radius: 8px;
+                position: relative;
+                overflow: hidden;
+            }
+            .btn-primary:hover {
+                transform: scale(1.05);
+                box-shadow: 0 10px 20px rgba(6, 182, 212, 0.6);
+            }
+            .btn-primary:active {
+                transform: scale(0.95);
+            }
+            .btn-primary::after {
+                content: "";
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 0;
+                height: 0;
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 50%;
+                transform: translate(-50%, -50%);
+                transition: width 0.3s ease, height 0.3s ease;
+            }
+            .btn-primary:active::after {
+                width: 200px;
+                height: 200px;
+            }
+            .btn-secondary {
+                background: transparent;
+                border: 2px solid white;
+                color: white;
+                transition: background 0.2s ease, color 0.2s ease,
+                    transform 0.2s ease;
+                border-radius: 8px;
+                position: relative;
+                overflow: hidden;
+            }
+            .btn-secondary:hover {
+                background: white;
+                color: #1e40af;
+                transform: scale(1.05);
+            }
+            .btn-secondary:active {
+                transform: scale(0.95);
+            }
+            .btn-secondary::after {
+                content: "";
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 0;
+                height: 0;
+                background: rgba(6, 182, 212, 0.3);
+                border-radius: 50%;
+                transform: translate(-50%, -50%);
+                transition: width 0.3s ease, height 0.3s ease;
+            }
+            .btn-secondary:active::after {
+                width: 200px;
+                height: 200px;
+            }
+            .btn-download {
+                background: linear-gradient(to right, #3b82f6, #06b6d4);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 8px;
+                transition: transform 0.2s ease;
+                font-weight: 500;
+                position: relative;
+                overflow: hidden;
+            }
+            .btn-download:hover {
+                transform: scale(1.1);
+            }
+            .btn-download:active {
+                transform: scale(0.95);
+            }
+            .btn-download::after {
+                content: "";
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 0;
+                height: 0;
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 50%;
+                transform: translate(-50%, -50%);
+                transition: width 0.3s ease, height 0.3s ease;
+            }
+            .btn-download:active::after {
+                width: 200px;
+                height: 200px;
+            }
+            .dashboard-panel {
+                transition: max-height 0.2s ease, opacity 0.2s ease,
+                    transform 0.2s ease;
+                max-height: 0;
+                opacity: 0;
+                overflow: hidden;
+                transform: translateY(10px);
+            }
+            .dashboard-panel.active {
+                max-height: 800px;
+                opacity: 1;
+                transform: translateY(0);
+            }
+            .toggle-btn {
+                background: linear-gradient(to right, #06b6d4, #3b82f6);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 8px;
+                transition: transform 0.2s ease;
+                font-weight: 500;
+                position: relative;
+                overflow: hidden;
+            }
+            .toggle-btn:hover {
+                transform: scale(1.05);
+            }
+            .toggle-btn:active {
+                transform: scale(0.95);
+            }
+            .toggle-btn::after {
+                content: "";
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 0;
+                height: 0;
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 50%;
+                transform: translate(-50%, -50%);
+                transition: width 0.3s ease, height 0.3s ease;
+            }
+            .toggle-btn:active::after {
+                width: 200px;
+                height: 200px;
+            }
+            .radial-progress {
+                position: relative;
+                width: 80px;
+                height: 80px;
+            }
+            .radial-progress svg {
+                transform: rotate(-90deg);
+            }
+            .radial-progress circle {
+                fill: none;
+                stroke-width: 8;
+            }
+            .radial-progress .bg {
+                stroke: #d1d5db;
+            }
+            .radial-progress .progress {
+                stroke: #06b6d4;
+                stroke-dasharray: 251.2;
+                stroke-dashoffset: 92.048;
+                transition: stroke-dashoffset 0.5s ease;
+            }
+            .radial-progress .text {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 16px;
+                font-weight: 600;
+                color: white;
+            }
+            .illustration-flow {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 20px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 16px;
+                margin-bottom: 20px;
+            }
+            .illustration-flow svg {
+                flex: 1;
+                max-width: 100%;
+            }
+            .illustration-flow .icon {
+                fill: #ffffff;
+            }
+            .illustration-flow .line {
+                stroke: #06b6d4;
+                stroke-width: 2;
+            }
+            .input-field {
+                transition: border-color 0.2s ease;
+            }
+            .input-field:focus {
+                border-color: #06b6d4;
+                box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.3);
+            }
+            .video-container {
+                position: relative;
+                overflow: hidden;
+                border-radius: 16px;
+            }
+            .video-container::before {
+                content: "";
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 60px;
+                height: 60px;
+                background: rgba(6, 182, 212, 0.8);
+                border-radius: 50%;
+                transform: translate(-50%, -50%) scale(1);
+                animation: pulse 2s infinite;
+                z-index: 1;
+            }
+            .video-container.playing::before {
+                display: none;
+            }
+            @keyframes pulse {
+                0% {
+                    transform: translate(-50%, -50%) scale(1);
+                    opacity: 1;
+                }
+                100% {
+                    transform: translate(-50%, -50%) scale(1.5);
+                    opacity: 0;
+                }
+            }
+            .saas-card {
+                transition: all 1s ease;
+                opacity: 0;
+                transform: scale(0.8);
+                background: linear-gradient(135deg, #1e40af, #06b6d4);
+                border-radius: 16px;
+                padding: 20px;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                font-size: 1.1rem;
+                line-height: 1.6;
+            }
+            .saas-card.active {
+                opacity: 1;
+                transform: scale(1);
+            }
+            @keyframes slideIn {
+                0% {
+                    opacity: 0;
+                    transform: scale(0.8);
+                }
+                100% {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+            @keyframes fadeOut {
+                0% {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+                100% {
+                    opacity: 0;
+                    transform: scale(1.2);
+                }
+            }
+            .saas-container {
+                position: relative;
+                height: 300px;
+                width: 100%;
+                overflow: hidden;
+            }
+            .advisor-card img,
+            .team-card img {
+                border: 2px solid #06b6d4;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-900 text-white">
+        <!-- Illustration Flow -->
+        <section class="py-8 bg-gray-800">
+            <div class="container mx-auto px-4">
+                <div class="illustration-flow frosted-glass neumorphic">
+                    <svg
+                        viewBox="0 0 800 100"
+                        preserveAspectRatio="xMidYMid meet"
+                    >
+                        <g transform="translate(50, 50)">
+                            <!-- Schedule Icon -->
+                            <path
+                                class="icon"
+                                d="M12 2h2v2h2v12H2V4h2V2h8zm2 12H4V6h10v8zm-5-3H7v2h2v-2zm4 0h-2v2h2v-2zm-4-3H7v2h2v-2zm4 0h-2v2h2v-2z"
+                            />
+                            <!-- Line to Collaborate -->
+                            <line class="line" x1="20" y1="8" x2="200" y2="8" />
+                            <!-- Collaborate Icon -->
+                            <path
+                                class="icon"
+                                transform="translate(200, -8)"
+                                d="M16 3C8.8 3 3 8.8 3 16s5.8 13 13 13 13-5.8 13-13S23.2 3 16 3zm0 2c6.1 0 11 4.9 11 11s-4.9 11-11 11S5 22.1 5 16 9.9 5 16 5zm-3 6v2h6v-2h-6zm0 4v2h6v-2h-6z"
+                            />
+                            <!-- Line to Analyze -->
+                            <line
+                                class="line"
+                                x1="220"
+                                y1="8"
+                                x2="400"
+                                y2="8"
+                            />
+                            <!-- Analyze Icon -->
+                            <path
+                                class="icon"
+                                transform="translate(400, -8)"
+                                d="M16 3C8.8 3 3 8.8 3 16s5.8 13 13 13 13-5.8 13-13S23.2 3 16 3zm0 2c6.1 0 11 4.9 11 11s-4.9 11-11 11S5 22.1 5 16 9.9 5 16 5zm-4 7v6h2v-6h-2zm4 0v9h2v-9h-2zm4 0v4h2v-4h-2z"
+                            />
+                            <!-- Line to Succeed -->
+                            <line
+                                class="line"
+                                x1="420"
+                                y1="8"
+                                x2="600"
+                                y2="8"
+                            />
+                            <!-- Succeed Icon -->
+                            <path
+                                class="icon"
+                                transform="translate(600, -8)"
+                                d="M12 2v2H8v12h8V4h-2V2h2v14H6V4h2V2h4zm4 5l-5 5-3-3 1.4-1.4 1.6 1.6 3.6-3.6L16 7z"
+                            />
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        </section>
+
+        <!-- Logo Section -->
+        <!-- <header class="bg-gray-800 py-4 shadow-lg">
+            <div class="container mx-auto px-4">
+                <img
+                    src="xerion-logo.png"
+                    alt="Xerion Logo"
+                    class="h-12 mx-auto"
+                />
+            </div>
+        </header> -->
+
+        <!-- Hero Section with iPhone 16 Mockup -->
+        <section class="hero-bg bg-cover bg-center text-white py-36">
+            <div class="container mx-auto px-4">
+                <div
+                    class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center"
+                >
+                    <div class="text-center lg:text-left fade-in">
+                        <h1
+                            class="text-7xl font-extrabold mb-4 tracking-tight gradient-text"
+                        >
+                            Xerion: Your Enterprise Team Companion
+                        </h1>
+                        <p class="text-xl mb-8 text-gray-200">
+                            Scaling beyond scheduling, Xerion redefines
+                            productivity with AI-driven collaboration, insights,
+                            and wellbeing for modern businesses.
+                        </p>
+                        <div class="flex justify-center lg:justify-start gap-4">
+                            <a
+                                href="#waitlist"
+                                class="btn-primary px-8 py-4 rounded-lg font-semibold neumorphic"
+                                "
+                                >Join the Waitlist</a
+                            >
+                            <a
+                                href="#demo"
+                                class="btn-secondary px-8 py-4 rounded-lg font-semibold neumorphic"
+                                >Watch Demo</a
+                            >
+                        </div>
+                    </div>
+                    <div class="flex justify-center">
+                        <img
+                            src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80"
+                            alt="iPhone 16 with Xerion Dashboard"
+                            class="iphone-mockup h-96 rounded-3xl shadow-2xl neumorphic"
+                        />
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Xerion -->
+        <section class="py-32 bg-gray-800">
+            <div class="container mx-auto px-4">
+                <h2 class="text-5xl font-bold text-center mb-8 section-title">
+                    Why Xerion?
+                </h2>
+                <p
+                    class="text-lg text-gray-300 text-center mb-12 max-w-3xl mx-auto"
+                >
+                    Xerion is the ultimate AI-powered platform, revolutionizing
+                    enterprise productivity with seamless collaboration,
+                    actionable insights, and team wellbeing in a $10B+ market.
+                </p>
+                <div
+                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+                >
+                    <div
+                        class="feature-card text-center p-8 bg-gradient-to-br from-gray-900 to-blue-900 rounded-xl shadow-lg fade-in"
+                    >
+                        <h3 class="text-xl font-semibold mb-2 text-white">
+                            AI Meeting Summarizer
+                        </h3>
+                        <p class="text-gray-300">
+                            Delivers concise summaries, action items, and
+                            sentiment analysis.
+                        </p>
+                    </div>
+                    <div
+                        class="feature-card text-center p-8 bg-gradient-to-br from-gray-900 to-blue-900 rounded-xl shadow-lg fade-in"
+                        style="animation-delay: 0.1s"
+                    >
+                        <h3 class="text-xl font-semibold mb-2 text-white">
+                            Smart Scheduling
+                        </h3>
+                        <p class="text-gray-300">
+                            Resolves cross-department conflicts for optimal
+                            meeting times.
+                        </p>
+                    </div>
+                    <div
+                        class="feature-card text-center p-8 bg-gradient-to-br from-gray-900 to-blue-900 rounded-xl shadow-lg fade-in"
+                        style="animation-delay: 0.2s"
+                    >
+                        <h3 class="text-xl font-semibold mb-2 text-white">
+                            Team Participation
+                        </h3>
+                        <p class="text-gray-300">
+                            Tracks engagement across departments for
+                            collaboration.
+                        </p>
+                    </div>
+                    <div
+                        class="feature-card text-center p-8 bg-gradient-to-br from-gray-900 to-blue-900 rounded-xl shadow-lg fade-in"
+                        style="animation-delay: 0.3s"
+                    >
+                        <h3 class="text-xl font-semibold mb-2 text-white">
+                            Success Outcome
+                        </h3>
+                        <p class="text-gray-300">
+                            Measures decisions and action items for meeting
+                            impact.
+                        </p>
+                    </div>
+                    <div
+                        class="feature-card text-center p-8 bg-gradient-to-br from-gray-900 to-blue-900 rounded-xl shadow-lg fade-in"
+                        style="animation-delay: 0.4s"
+                    >
+                        <h3 class="text-xl font-semibold mb-2 text-white">
+                            Rescheduling Engine
+                        </h3>
+                        <p class="text-gray-300">
+                            Predicts and resolves scheduling conflicts
+                            seamlessly.
+                        </p>
+                    </div>
+                    <div
+                        class="feature-card text-center p-8 bg-gradient-to-br from-gray-900 to-blue-900 rounded-xl shadow-lg fade-in"
+                        style="animation-delay: 0.5s"
+                    >
+                        <h3 class="text-xl font-semibold mb-2 text-white">
+                            Burnout Detection
+                        </h3>
+                        <p class="text-gray-300">
+                            Monitors wellbeing with team health scores.
+                        </p>
+                    </div>
+                    <div
+                        class="feature-card text-center p-8 bg-gradient-to-br from-gray-900 to-blue-900 rounded-xl shadow-lg fade-in"
+                        style="animation-delay: 0.6s"
+                    >
+                        <h3 class="text-xl font-semibold mb-2 text-white">
+                            Sentiment Analysis
+                        </h3>
+                        <p class="text-gray-300">
+                            Evaluates team morale during meetings.
+                        </p>
+                    </div>
+                    <div
+                        class="feature-card text-center p-8 bg-gradient-to-br from-gray-900 to-blue-900 rounded-xl shadow-lg fade-in"
+                        style="animation-delay: 0.7s"
+                    >
+                        <h3 class="text-xl font-semibold mb-2 text-white">
+                            Action Prioritization
+                        </h3>
+                        <p class="text-gray-300">
+                            Ranks tasks by urgency and impact.
+                        </p>
+                    </div>
+                    <div
+                        class="feature-card text-center p-8 bg-gradient-to-br from-gray-900 to-blue-900 rounded-xl shadow-lg fade-in"
+                        style="animation-delay: 0.8s"
+                    >
+                        <h3 class="text-xl font-semibold mb-2 text-white">
+                            Consensus Algorithm
+                        </h3>
+                        <p class="text-gray-300">
+                            Aligns meeting times with team preferences.
+                        </p>
+                    </div>
+                    <div
+                        class="feature-card text-center p-8 bg-gradient-to-br from-gray-900 to-blue-900 rounded-xl shadow-lg fade-in"
+                        style="animation-delay: 0.9s"
+                    >
+                        <h3 class="text-xl font-semibold mb-2 text-white">
+                            AutoCal Ticketing
+                        </h3>
+                        <p class="text-gray-300">
+                            Manages meeting and event logistics.
+                        </p>
+                    </div>
+                    <div
+                        class="feature-card text-center p-8 bg-gradient-to-br from-gray-900 to-blue-900 rounded-xl shadow-lg fade-in"
+                        style="animation-delay: 1s"
+                    >
+                        <h3 class="text-xl font-semibold mb-2 text-white">
+                            Workflow Orchestration
+                        </h3>
+                        <p class="text-gray-300">
+                            Prioritizes tasks for enterprise efficiency.
+                        </p>
+                    </div>
+                    <div
+                        class="feature-card text-center p-8 bg-gradient-to-br from-gray-900 to-blue-900 rounded-xl shadow-lg fade-in"
+                        style="animation-delay: 1.1s"
+                    >
+                        <h3 class="text-xl font-semibold mb-2 text-white">
+                            Cross-Department Insights
+                        </h3>
+                        <p class="text-gray-300">
+                            Drives collaboration with team analytics.
+                        </p>
+                    </div>
+                </div>
+                <!-- React Counter Dashboard -->
+                <div class="mt-16 text-center">
+                    <h3 class="text-2xl font-semibold mb-4 text-white">
+                        Engage with Xerion
+                    </h3>
+                    <div
+                        id="reaction-counter"
+                        class="frosted-glass p-6 rounded-xl neumorphic"
+                    ></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Waitlist Section with SaaS Integrations -->
+        <section
+            id="waitlist"
+            class="py-32 bg-gradient-to-r from-blue-700 to-cyan-600 text-white"
+        >
+            <div class="container mx-auto px-4 text-center">
+                <!-- Global Impact Dashboard -->
+                <div class="mb-16">
+                    <h2 class="text-5xl font-bold mb-4 section-title">
+                        600+ SaaS Integrations
+                    </h2>
+                    <p class="text-xl mb-6 text-gray-200">
+                        Xerion seamlessly integrates with over 600 SaaS tools to
+                        solve your enterprise challenges.
+                    </p>
+                    <div class="saas-container frosted-glass neumorphic">
+                        <div class="saas-card" data-index="0">
+                            <h3 class="text-2xl font-semibold mb-4 text-white">
+                                Slack
+                            </h3>
+                            <p class="text-gray-200">
+                                Problem: Fragmented team communication.
+                                <br />Xerion syncs with Slack to deliver
+                                real-time notifications, meeting summaries, and
+                                action items directly in your channels,
+                                enhancing team collaboration.
+                            </p>
+                        </div>
+                        <div class="saas-card" data-index="1">
+                            <h3 class="text-2xl font-semibold mb-4 text-white">
+                                Microsoft Teams
+                            </h3>
+                            <p class="text-gray-200">
+                                Problem: Overloaded meetings with poor
+                                follow-up. <br />Xerion integrates with Teams to
+                                provide AI-driven scheduling, actionable
+                                insights, and burnout alerts, streamlining
+                                enterprise communication.
+                            </p>
+                        </div>
+                        <div class="saas-card" data-index="2">
+                            <h3 class="text-2xl font-semibold mb-4 text-white">
+                                Zoom
+                            </h3>
+                            <p class="text-gray-200">
+                                Problem: Inefficient virtual meetings.
+                                <br />Xerion enhances Zoom with AI-powered
+                                summaries, participation analytics, and
+                                sentiment analysis for productive virtual
+                                collaboration.
+                            </p>
+                        </div>
+                        <div class="saas-card" data-index="3">
+                            <h3 class="text-2xl font-semibold mb-4 text-white">
+                                Asana
+                            </h3>
+                            <p class="text-gray-200">
+                                Problem: Disjointed task tracking. <br />Xerion
+                                connects with Asana to automatically assign
+                                meeting action items, prioritizing tasks for
+                                seamless project management.
+                            </p>
+                        </div>
+                        <div class="saas-card" data-index="4">
+                            <h3 class="text-2xl font-semibold mb-4 text-white">
+                                Trello
+                            </h3>
+                            <p class="text-gray-200">
+                                Problem: Scattered workflows. <br />Xerion syncs
+                                with Trello to create task cards from meeting
+                                outcomes, ensuring efficient tracking and
+                                completion.
+                            </p>
+                        </div>
+                        <div class="saas-card" data-index="5">
+                            <h3 class="text-2xl font-semibold mb-4 text-white">
+                                Salesforce
+                            </h3>
+                            <p class="text-gray-200">
+                                Problem: Misaligned sales meetings. <br />Xerion
+                                integrates with Salesforce to log meeting
+                                insights and action items, improving sales team
+                                coordination and client follow-ups.
+                            </p>
+                        </div>
+                        <div class="saas-card" data-index="6">
+                            <h3 class="text-2xl font-semibold mb-4 text-white">
+                                Google Workspace
+                            </h3>
+                            <p class="text-gray-200">
+                                Problem: Inefficient document collaboration.
+                                <br />Xerion syncs with Google Workspace to
+                                integrate meeting notes and schedules into Docs
+                                and Calendar, boosting productivity.
+                            </p>
+                        </div>
+                        <div class="saas-card" data-index="7">
+                            <h3 class="text-2xl font-semibold mb-4 text-white">
+                                Jira
+                            </h3>
+                            <p class="text-gray-200">
+                                Problem: Disconnected development workflows.
+                                <br />Xerion connects with Jira to assign tasks
+                                from meetings, aligning development teams with
+                                project goals.
+                            </p>
+                        </div>
+                        <div class="saas-card" data-index="8">
+                            <h3 class="text-2xl font-semibold mb-4 text-white">
+                                HubSpot
+                            </h3>
+                            <p class="text-gray-200">
+                                Problem: CRM data silos. <br />Xerion integrates
+                                with HubSpot to log meeting outcomes and
+                                customer interactions, enhancing marketing and
+                                sales alignment.
+                            </p>
+                        </div>
+                        <div class="saas-card" data-index="9">
+                            <h3 class="text-2xl font-semibold mb-4 text-white">
+                                Notion
+                            </h3>
+                            <p class="text-gray-200">
+                                Problem: Scattered project documentation.
+                                <br />Xerion syncs with Notion to centralize
+                                meeting notes, tasks, and schedules,
+                                streamlining team workflows.
+                            </p>
+                        </div>
+                    </div>
+                    <h2 class="text-5xl font-bold mb-4 section-title mt-12">
+                        Global Impact Dashboard
+                    </h2>
+                    <p class="text-xl mb-6 text-gray-200">
+                        800+ Innovators on Waitlist | 200M+ Meetings Scheduled
+                        Daily Worldwide
+                    </p>
+                    <button
+                        id="toggle-dashboard"
+                        class="toggle-btn mb-4 px-6 py-2"
+                    >
+                        <svg
+                            id="dashboard-chevron"
+                            class="w-6 h-6 inline-block"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 9l-7 7-7-7"
+                            ></path>
+                        </svg>
+                    </button>
+                    <div
+                        id="dashboard-container"
+                        class="dashboard-container open frosted-glass p-8 neumorphic"
+                    >
+                        <!-- Download Meeting Outcome -->
+                        <div class="mb-8">
+                            <h4 class="text-lg font-semibold text-white mb-4">
+                                Download Meeting Outcome
+                            </h4>
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                <button
+                                    class="btn-download"
+                                    onclick="downloadOutcome('pdf')"
+                                >
+                                    PDF
+                                </button>
+                                <button
+                                    class="btn-download"
+                                    onclick="downloadOutcome('csv')"
+                                >
+                                    CSV
+                                </button>
+                                <button
+                                    class="btn-download"
+                                    onclick="downloadOutcome('word')"
+                                >
+                                    Word
+                                </button>
+                                <button
+                                    class="btn-download"
+                                    onclick="downloadOutcome('excel')"
+                                >
+                                    Excel
+                                </button>
+                                <button
+                                    class="btn-download"
+                                    onclick="downloadOutcome('audio')"
+                                >
+                                    Audio
+                                </button>
+                            </div>
+                        </div>
+                        <!-- AI Panels -->
+                        <div
+                            id="ai-outcome-panel"
+                            class="dashboard-panel active bg-gray-900/90 p-4 text-left text-gray-200"
+                        >
+                            <h4 class="text-lg font-semibold text-white mb-2">
+                                Meeting Outcome (Demo)
+                            </h4>
+                            <p class="text-sm">
+                                <strong>Summary:</strong> Discussed Q3 goals,
+                                assigned tasks for marketing campaign. Success
+                                Outcome: 85%.
+                            </p>
+                            <p class="text-sm">
+                                <strong>Action Items:</strong> High Priority:
+                                John to draft campaign plan by 5/10; Sarah to
+                                review budget (5 tasks assigned).
+                            </p>
+                            <p class="text-sm">
+                                <strong>Participation:</strong> 85% active
+                                participants.
+                            </p>
+                            <p class="text-sm">
+                                <strong>Decisions Made:</strong> 90% of
+                                decisions implemented (4/5 decisions).
+                            </p>
+                            <p class="text-sm">
+                                <strong>Sentiment:</strong> Team Sentiment:
+                                Positive, 80%.
+                            </p>
+                        </div>
+                        <div
+                            id="ai-scheduling-panel"
+                            class="dashboard-panel bg-gray-900/90 p-4 text-left text-gray-200"
+                        >
+                            <h4 class="text-lg font-semibold text-white mb-2">
+                                Smart Scheduling Visualizer
+                            </h4>
+                            <p class="text-sm">
+                                Next Available Slots:
+                                <span id="scheduling-slots"
+                                    >2 PM, 4 PM (Your Timezone)</span
+                                >
+                            </p>
+                            <p class="text-sm">
+                                Rescheduling Possibility: 30% (based on
+                                participant availability).
+                            </p>
+                            <p class="text-sm">
+                                <strong>Conflict Resolution:</strong> Resolved
+                                conflicts for Marketing and Sales.
+                            </p>
+                        </div>
+                        <div
+                            id="ai-burnout-panel"
+                            class="dashboard-panel bg-gray-900/90 p-4 text-left text-gray-200"
+                        >
+                            <h4 class="text-lg font-semibold text-white mb-2">
+                                Burnout Detection
+                            </h4>
+                            <p class="text-sm" id="burnout-warning">
+                                Warning: High meeting load detected (30+
+                                meetings in 3 days). Consider rescheduling.
+                            </p>
+                            <div class="radial-progress mt-4 inline-block">
+                                <svg width="80" height="80">
+                                    <circle class="bg" cx="40" cy="40" r="36" />
+                                    <circle
+                                        class="progress"
+                                        cx="40"
+                                        cy="40"
+                                        r="36"
+                                        style="stroke-dashoffset: 92.048"
+                                    />
+                                </svg>
+                                <div class="text">65%</div>
+                            </div>
+                            <p class="text-sm inline-block ml-4">
+                                Wellbeing Score: 65%, reduce meetings.
+                            </p>
+                        </div>
+                        <div class="flex justify-center gap-4 mt-4">
+                            <button
+                                id="toggle-outcome"
+                                class="btn-primary px-6 py-2 neumorphic"
+                            >
+                                Meeting Outcome
+                            </button>
+                            <button
+                                id="toggle-scheduling"
+                                class="btn-primary px-6 py-2 neumorphic"
+                            >
+                                Scheduling
+                            </button>
+                            <button
+                                id="toggle-burnout"
+                                class="btn-primary px-6 py-2 neumorphic"
+                            >
+                                Burnout Detection
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Live Calendar with AI Scheduling -->
+                <div class="mb-16">
+                    <h3 class="text-3xl font-semibold mb-4 text-white">
+                        Xerion Live Calendar
+                    </h3>
+                    <div class="calendar-container frosted-glass neumorphic">
+                        <div
+                            id="live-calendar"
+                            class="text-lg font-semibold mb-4 text-white"
+                        ></div>
+                        <div
+                            id="ai-scheduling"
+                            class="text-sm mb-4 text-gray-200"
+                        >
+                            Next Available Slot:
+                            <span id="next-slot">Loading...</span>
+                        </div>
+                        <div
+                            id="burnout-detection"
+                            class="text-sm mb-4 text-gray-200"
+                        >
+                            Burnout Status:
+                            <span id="burnout-status"
+                                >High meeting load detected</span
+                            >
+                        </div>
+                        <select
+                            id="timezone-select"
+                            class="timezone-select w-full mb-4"
+                        >
+                            <option value="auto">Auto (Your Timezone)</option>
+                            <option value="Africa/Lagos">
+                                WAT (Africa/Lagos)
+                            </option>
+                            <option value="America/New_York">
+                                EST (America/New_York)
+                            </option>
+                            <option value="Europe/London">
+                                GMT (Europe/London)
+                            </option>
+                            <option value="Asia/Tokyo">JST (Asia/Tokyo)</option>
+                        </select>
+                        <div class="text-sm text-gray-200">
+                            Schedule meetings with AI-driven insights.
+                        </div>
+                    </div>
+                </div>
+                <!-- Waitlist Form -->
+                <h2 class="text-4xl font-bold mb-4 text-white">
+                    Join the Waitlist
+                </h2>
+                <div class="flex justify-center gap-6 mb-8">
+                    <button
+                        class="reaction-btn text-3xl transition transform"
+                        onclick="updateReaction('🔥')"
+                    >
+                        🔥 <span id="fire-count">0</span>
+                    </button>
+                    <button
+                        class="reaction-btn text-3xl transition transform"
+                        onclick="updateReaction('💕')"
+                    >
+                        💕 <span id="heart-count">0</span>
+                    </button>
+                    <button
+                        class="reaction-btn text-3xl transition transform"
+                        onclick="updateReaction('💪')"
+                    >
+                        💪 <span id="strong-count">0</span>
+                    </button>
+                    <button
+                        class="reaction-btn text-3xl transition transform"
+                        onclick="updateReaction('💥')"
+                    >
+                        💥 <span id="boom-count">0</span>
+                    </button>
+                    <button
+                        class="reaction-btn text-3xl transition transform"
+                        onclick="updateReaction('👍')"
+                    >
+                        👍 <span id="thumbsup-count">0</span>
+                    </button>
+                    <button
+                        class="reaction-btn text-3xl transition transform"
+                        onclick="updateReaction('👎')"
+                    >
+                        👎 <span id="thumbsdown-count">0</span>
+                    </button>
+                </div>
+                <form
+                    id="waitlist-form"
+                    class="max-w-lg mx-auto frosted-glass p-8 rounded-xl shadow-lg neumorphic"
+                    action="https://www.x-autocal.store/api/waitlist" 
+                    method="POST"
+                    onsubmit="handleWaitlistSubmit(event)"
+                >
+                    <input
+                        type="text"
+                        name="name"
+                        placeholder="Name"
+                        class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
+                        required
+                    />
+                    <input
+                        type="email"
+                        name="email"
+                        placeholder="Email"
+                        class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
+                        required
+                    />
+            
+                    <input
+                        type="text"
+                        name="company"
+                        placeholder="Company"
+                        class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
+                    />
+                    <input
+                        type="text"
+                        name="role"
+                        placeholder="Role"
+                        class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
+                    />
+                    <select
+                        name="userType"
+                        class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
+                    >
+                        <option value="user">User</option>
+                        <option value="investor">Investor</option>
+                        <option value="partner">Partner</option>
+                    </select>
+                    <button
+                        type="submit"
+                        class="w-full btn-primary p-3 rounded-lg neumorphic"
+                    >
+                        Join Waitlist
+                    </button>
+                    <div id="waitlist-message" class="mt-4 text-center hidden"></div>
+                </form>
+                <p class="mt-4 text-lg text-gray-200">
+                    Launch Countdown:
+                    <span
+                        id="countdown"
+                        class="countdown font-bold text-white"
+                    ></span>
+                </p>
+            </div>
+        </section>
+
+        <!-- Demo Video Section -->
+        <section id="demo" class="py-32 bg-gray-800">
+            <div class="container mx-auto px-4 text-center">
+                <h2 class="text-5xl font-bold mb-8 section-title">
+                    See Xerion in Action
+                </h2>
+                <div
+                    class="relative max-w-4xl mx-auto video-container frosted-glass neumorphic"
+                >
+                    <video
+                        id="demo-video"
+                        controls
+                        class="w-full rounded-xl shadow-xl"
+                    >
+                        <source src="demo-video.mp4" type="video/mp4" />
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="mt-6 flex justify-center gap-4">
+                        <a
+                            href="#"
+                            class="btn-primary px-6 py-3 rounded-lg neumorphic"
+                            >Watch Full Demo</a
+                        >
+                        <a
+                            href="#"
+                            class="btn-secondary px-6 py-3 rounded-lg neumorphic"
+                            >Download Demo Guide</a
+                        >
+                        <a
+                            href="#"
+                            class="btn-secondary px-6 py-3 rounded-lg neumorphic"
+                            >Request Live Demo</a
+                        >
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pitch Deck & Documents -->
+        <section class="py-32 bg-gray-900">
+            <div class="container mx-auto px-4 text-center">
+                <h2 class="text-5xl font-bold mb-8 section-title">
+                    Explore Our Vision
+                </h2>
+                <div
+                    class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto"
+                >
+                    <div
+                        class="p-6 frosted-glass rounded-xl shadow-lg neumorphic"
+                    >
+                        <h3 class="text-xl font-semibold mb-2 text-white">
+                            View Pitch Deck
+                        </h3>
+                        <p class="text-gray-300 mb-4">
+                            Discover Xerion's roadmap to dominate the $10B
+                            productivity market.
+                        </p>
+                        <a
+                            href="#"
+                            class="btn-primary px-4 py-2 rounded-lg neumorphic"
+                            >View Now</a
+                        >
+                    </div>
+                    <div
+                        class="p-6 frosted-glass rounded-xl shadow-lg neumorphic"
+                    >
+                        <h3 class="text-xl font-semibold mb-2 text-white">
+                            Company Documents
+                        </h3>
+                        <p class="text-gray-300 mb-4">
+                            Access detailed insights for investors and partners.
+                        </p>
+                        <a
+                            href="#"
+                            class="btn-primary px-4 py-2 rounded-lg neumorphic"
+                            >Download</a
+                        >
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Team Section -->
+        <section class="py-32 bg-gray-800">
+            <div class="container mx-auto px-4">
+                <h2 class="text-5xl font-bold text-center mb-12 section-title">
+                    Meet Our Team
+                </h2>
+                <div
+                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
+                >
+                    <div class="team-card p-6 fade-in">
+                        <img
+                            src="adam-ledoor.jpg"
+                            alt="Adam Ledoor"
+                            class="h-32 w-32 rounded-full mx-auto mb-4 object-cover"
+                        />
+                        <h3
+                            class="text-xl font-semibold text-white text-center"
+                        >
+                            Adam Ledoor
+                        </h3>
+                        <p class="text-gray-300 text-center">Founder & CEO</p>
+                        <p class="text-gray-400 text-sm mt-2 text-center">
+                            Visionary leader driving Xerion's mission.
+                        </p>
+                        <div class="flex justify-center gap-4 mt-4">
+                            <a
+                                href="https://linkedin.com/in/adam-ledoor"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >LinkedIn</a
+                            >
+                            <a
+                                href="https://x.com/adamledoor"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >X</a
+                            >
+                        </div>
+                    </div>
+                    <div
+                        class="team-card p-6 fade-in"
+                        style="animation-delay: 0.1s"
+                    >
+                        <img
+                            src="sarah-johnson.jpg"
+                            alt="Sarah Johnson"
+                            class="h-32 w-32 rounded-full mx-auto mb-4 object-cover"
+                        />
+                        <h3
+                            class="text-xl font-semibold text-white text-center"
+                        >
+                            Sarah Johnson
+                        </h3>
+                        <p class="text-gray-300 text-center">
+                            Co-Founder & CTO
+                        </p>
+                        <p class="text-gray-400 text-sm mt-2 text-center">
+                            Tech innovator behind Xerion's AI platform.
+                        </p>
+                        <div class="flex justify-center gap-4 mt-4">
+                            <a
+                                href="https://linkedin.com/in/sarah-johnson"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >LinkedIn</a
+                            >
+                            <a
+                                href="https://x.com/sarahjohnson"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >X</a
+                            >
+                        </div>
+                    </div>
+                    <div
+                        class="team-card p-6 fade-in"
+                        style="animation-delay: 0.2s"
+                    >
+                        <img
+                            src="michael-chen.jpg"
+                            alt="Michael Chen"
+                            class="h-32 w-32 rounded-full mx-auto mb-4 object-cover"
+                        />
+                        <h3
+                            class="text-xl font-semibold text-white text-center"
+                        >
+                            Michael Chen
+                        </h3>
+                        <p class="text-gray-300 text-center">Head of Product</p>
+                        <p class="text-gray-400 text-sm mt-2 text-center">
+                            Crafting intuitive enterprise experiences.
+                        </p>
+                        <div class="flex justify-center gap-4 mt-4">
+                            <a
+                                href="https://linkedin.com/in/michael-chen"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >LinkedIn</a
+                            >
+                            <a
+                                href="https://x.com/michaelchen"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >X</a
+                            >
+                        </div>
+                    </div>
+                    <div
+                        class="team-card p-6 fade-in"
+                        style="animation-delay: 0.3s"
+                    >
+                        <img
+                            src="emily-roberts.jpg"
+                            alt="Emily Roberts"
+                            class="h-32 w-32 rounded-full mx-auto mb-4 object-cover"
+                        />
+                        <h3
+                            class="text-xl font-semibold text-white text-center"
+                        >
+                            Emily Roberts
+                        </h3>
+                        <p class="text-gray-300 text-center">
+                            Head of Marketing
+                        </p>
+                        <p class="text-gray-400 text-sm mt-2 text-center">
+                            Building Xerion's global brand.
+                        </p>
+                        <div class="flex justify-center gap-4 mt-4">
+                            <a
+                                href="https://linkedin.com/in/emily-roberts"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >LinkedIn</a
+                            >
+                            <a
+                                href="https://x.com/emilyroberts"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >X</a
+                            >
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Advisory Team Section -->
+        <section class="py-32 bg-gradient-to-r from-blue-900 to-cyan-800">
+            <div class="container mx-auto px-4">
+                <h2 class="text-5xl font-bold text-center mb-12 section-title">
+                    Our Advisory Team
+                </h2>
+                <p
+                    class="text-lg text-gray-300 text-center mb-12 max-w-3xl mx-auto"
+                >
+                    Meet the experts guiding Xerion's vision with their
+                    strategic insights and industry expertise.
+                </p>
+                <div
+                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+                >
+                    <div class="advisor-card p-6 fade-in">
+                        <img
+                            src="laura-smith.jpg"
+                            alt="Laura Smith"
+                            class="h-32 w-32 rounded-full mx-auto mb-4 object-cover"
+                        />
+                        <h3
+                            class="text-xl font-semibold text-white text-center"
+                        >
+                            Laura Smith
+                        </h3>
+                        <p class="text-gray-300 text-center">
+                            Strategic Advisor
+                        </p>
+                        <p class="text-gray-400 text-sm mt-2 text-center">
+                            Xerion's AI-driven approach is set to revolutionize
+                            enterprise productivity!
+                        </p>
+                        <div class="flex justify-center gap-4 mt-4">
+                            <a
+                                href="https://linkedin.com/in/laura-smith"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >LinkedIn</a
+                            >
+                            <a
+                                href="https://x.com/laurasmith"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >X</a
+                            >
+                        </div>
+                    </div>
+                    <div
+                        class="advisor-card p-6 fade-in"
+                        style="animation-delay: 0.1s"
+                    >
+                        <img
+                            src="david-wong.jpg"
+                            alt="David Wong"
+                            class="h-32 w-32 rounded-full mx-auto mb-4 object-cover"
+                        />
+                        <h3
+                            class="text-xl font-semibold text-white text-center"
+                        >
+                            David Wong
+                        </h3>
+                        <p class="text-gray-300 text-center">
+                            Technology Advisor
+                        </p>
+                        <p class="text-gray-400 text-sm mt-2 text-center">
+                            The AI scheduling engine in Xerion is a breakthrough
+                            for team efficiency.
+                        </p>
+                        <div class="flex justify-center gap-4 mt-4">
+                            <a
+                                href="https://linkedin.com/in/david-wong"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >LinkedIn</a
+                            >
+                            <a
+                                href="https://x.com/davidwong"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >X</a
+                            >
+                        </div>
+                    </div>
+                    <div
+                        class="advisor-card p-6 fade-in"
+                        style="animation-delay: 0.2s"
+                    >
+                        <img
+                            src="anita-patel.jpg"
+                            alt="Anita Patel"
+                            class="h-32 w-32 rounded-full mx-auto mb-4 object-cover"
+                        />
+                        <h3
+                            class="text-xl font-semibold text-white text-center"
+                        >
+                            Anita Patel
+                        </h3>
+                        <p class="text-gray-300 text-center">HR Advisor</p>
+                        <p class="text-gray-400 text-sm mt-2 text-center">
+                            Xerion's burnout detection ensures teams thrive, not
+                            just survive.
+                        </p>
+                        <div class="flex justify-center gap-4 mt-4">
+                            <a
+                                href="https://linkedin.com/in/anita-patel"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >LinkedIn</a
+                            >
+                            <a
+                                href="https://x.com/anitapatel"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >X</a
+                            >
+                        </div>
+                    </div>
+                    <div
+                        class="advisor-card p-6 fade-in"
+                        style="animation-delay: 0.3s"
+                    >
+                        <img
+                            src="robert-kim.jpg"
+                            alt="Robert Kim"
+                            class="h-32 w-32 rounded-full mx-auto mb-4 object-cover"
+                        />
+                        <h3
+                            class="text-xl font-semibold text-white text-center"
+                        >
+                            Robert Kim
+                        </h3>
+                        <p class="text-gray-300 text-center">
+                            Marketing Advisor
+                        </p>
+                        <p class="text-gray-400 text-sm mt-2 text-center">
+                            Xerion's brand vision aligns perfectly with modern
+                            enterprise needs.
+                        </p>
+                        <div class="flex justify-center gap-4 mt-4">
+                            <a
+                                href="https://linkedin.com/in/robert-kim"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >LinkedIn</a
+                            >
+                            <a
+                                href="https://x.com/robertkim"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >X</a
+                            >
+                        </div>
+                    </div>
+                    <div
+                        class="advisor-card p-6 fade-in"
+                        style="animation-delay: 0.4s"
+                    >
+                        <img
+                            src="claire-jones.jpg"
+                            alt="Claire Jones"
+                            class="h-32 w-32 rounded-full mx-auto mb-4 object-cover"
+                        />
+                        <h3
+                            class="text-xl font-semibold text-white text-center"
+                        >
+                            Claire Jones
+                        </h3>
+                        <p class="text-gray-300 text-center">Product Advisor</p>
+                        <p class="text-gray-400 text-sm mt-2 text-center">
+                            Xerion's intuitive design empowers teams to focus on
+                            what matters.
+                        </p>
+                        <div class="flex justify-center gap-4 mt-4">
+                            <a
+                                href="https://linkedin.com/in/claire-jones"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >LinkedIn</a
+                            >
+                            <a
+                                href="https://x.com/clairejones"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >X</a
+                            >
+                        </div>
+                    </div>
+                    <div
+                        class="advisor-card p-6 fade-in"
+                        style="animation-delay: 0.5s"
+                    >
+                        <img
+                            src="vikram-singh.jpg"
+                            alt="Vikram Singh"
+                            class="h-32 w-32 rounded-full mx-auto mb-4 object-cover"
+                        />
+                        <h3
+                            class="text-xl font-semibold text-white text-center"
+                        >
+                            Vikram Singh
+                        </h3>
+                        <p class="text-gray-300 text-center">
+                            Operations Advisor
+                        </p>
+                        <p class="text-gray-400 text-sm mt-2 text-center">
+                            Xerion streamlines operations for unparalleled
+                            efficiency.
+                        </p>
+                        <div class="flex justify-center gap-4 mt-4">
+                            <a
+                                href="https://linkedin.com/in/vikram-singh"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >LinkedIn</a
+                            >
+                            <a
+                                href="https://x.com/vikramsingh"
+                                target="_blank"
+                                class="text-cyan-400 hover:text-cyan-600"
+                                >X</a
+                            >
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact Us -->
+        <!-- <section class="py-32 bg-gray-900">
+            <div class="container mx-auto px-4">
+                <h2 class="text-5xl font-bold text-center mb-8 section-title">
+                    Get in Touch
+                </h2>
+                <form
+                    id="contact-form"
+                    class="max-w-lg mx-auto frosted-glass p-8 rounded-xl shadow-lg neumorphic"
+                    onsubmit="handleFormSubmit(event)"
+                >
+                    <input
+                        type="text"
+                        placeholder="Name"
+                        class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
+                        required
+                    />
+                    <input
+                        type="email"
+                        placeholder="Email"
+                        class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
+                        required
+                    />
+                    <textarea
+                        placeholder="Message"
+                        class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
+                        rows="5"
+                        required
+                    ></textarea>
+                    <button
+                        type="submit"
+                        class="w-full btn-primary p-3 rounded-lg neumorphic"
+                    >
+                        Send Message
+                    </button>
+                </form>
+                <div class="text-center mt-8">
+                    <p class="text-lg mb-4 text-gray-200">Connect with us:</p>
+                    <div class="flex justify-center gap-4">
+                        <a
+                            href="#"
+                            class="text-cyan-400 hover:text-cyan-600"
+                            
+                            >Twitter</a
+                        >
+                        <a
+                            href="#"
+                            class="text-cyan-400 hover:text-cyan-600"
+                            >LinkedIn</a
+                        >
+                        <a
+                            href="#"
+                            class="text-cyan-400 hover:text-cyan-600"
+                            >Instagram</a
+                        >
+                    </div>
+                </div>
+            </div>
+        </section> -->
+
+        <!-- FAQ Section -->
+        <section class="py-32 bg-gray-800">
+            <div class="container mx-auto px-4">
+                <h2 class="text-5xl font-bold text-center mb-8 section-title">
+                    Frequently Asked Questions
+                </h2>
+                <div class="max-w-2xl mx-auto">
+                    <div
+                        class="accordion-item mb-4 bg-gray-900 p-6 rounded-xl shadow-lg neumorphic"
+                    >
+                        <button
+                            class="w-full text-left text-xl font-semibold text-white"
+                        >
+                            What is Xerion?
+                        </button>
+                        <div class="accordion-content text-gray-300 mt-2">
+                            Xerion is an AI-powered enterprise platform that
+                            redefines productivity and collaboration.
+                        </div>
+                    </div>
+                    <div
+                        class="accordion-item mb-4 bg-gray-900 p-6 rounded-xl shadow-lg neumorphic"
+                    >
+                        <button
+                            class="w-full text-left text-xl font-semibold text-white"
+                        >
+                            How does the AI Meeting Summarizer work?
+                        </button>
+                        <div class="accordion-content text-gray-300 mt-2">
+                            Generates summaries, action items, and sentiment
+                            analysis for meetings.
+                        </div>
+                    </div>
+                    <div
+                        class="accordion-item mb-4 bg-gray-900 p-6 rounded-xl shadow-lg neumorphic"
+                    >
+                        <button
+                            class="w-full text-left text-xl font-semibold text-white"
+                        >
+                            What is the Smart Scheduling Assistant?
+                        </button>
+                        <div class="accordion-content text-gray-300 mt-2">
+                            Resolves conflicts and suggests optimal meeting
+                            times.
+                        </div>
+                    </div>
+                    <div
+                        class="accordion-item mb-4 bg-gray-900 p-6 rounded-xl shadow-lg neumorphic"
+                    >
+                        <button
+                            class="w-full text-left text-xl font-semibold text-white"
+                        >
+                            How does Burnout Detection work?
+                        </button>
+                        <div class="accordion-content text-gray-300 mt-2">
+                            Monitors meeting loads and provides wellbeing
+                            scores.
+                        </div>
+                    </div>
+                    <div
+                        class="accordion-item mb-4 bg-gray-900 p-6 rounded-xl shadow-lg neumorphic"
+                    >
+                        <button
+                            class="w-full text-left text-xl font-semibold text-white"
+                        >
+                            What download formats are available?
+                        </button>
+                        <div class="accordion-content text-gray-300 mt-2">
+                            Meeting outcomes can be downloaded as PDF, CSV,
+                            Word, Excel, or Audio.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-16">
+            <div class="container mx-auto px-4">
+                <!-- <div class="text-center mb-8">
+                    <img
+                        src="xerion-logo.png"
+                        alt="Xerion Logo"
+                        class="h-12 mx-auto"
+                    />
+                </div> -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4 text-white">
+                            Navigation
+                        </h3>
+                        <ul class="space-y-2">
+                            <li>
+                                <a
+                                    href="#"
+                                    class="hover:text-cyan-400"
+                                    >Privacy Policy</a
+                                >
+                            </li>
+                            <li>
+                                <a
+                                    href="#"
+                                    class="hover:text-cyan-400"
+                                    
+                                    >Terms of Service</a
+                                >
+                            </li>
+                            <li>
+                                <a
+                                    href="#"
+                                    class="hover:text-cyan-400"
+                                    >Careers</a
+                                >
+                            </li>
+                            <li>
+                                <a
+                                    href="#"
+                                    class="hover:text-cyan-400"
+                                    >Support</a
+                                >
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4 text-white">
+                            Resources
+                        </h3>
+                        <ul class="space-y-2">
+                            <li>
+                                <a
+                                    href="#"
+                                    class="hover:text-cyan-400"
+                                    >Demo Request</a
+                                >
+                            </li>
+                            <li>
+                                <a
+                                    href="#"
+                                    class="hover:text-cyan-400"
+                                    >Investor Relations</a
+                                >
+                            </li>
+                            <li>
+                                <a
+                                    href="#"
+                                    class="hover:text-cyan-400"
+                                    >Media Inquiry</a
+                                >
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4 text-white">
+                            Connect
+                        </h3>
+                        <ul class="space-y-2">
+                            <li>
+                                <a
+                                    href="#"
+                                    class="hover:text-cyan-400"
+                                    
+                                    >Twitter</a
+                                >
+                            </li>
+                            <li>
+                                <a
+                                    href="#"
+                                    class="hover:text-cyan-400"
+                                    
+                                    >LinkedIn</a
+                                >
+                            </li>
+                            <li>
+                                <a
+                                    href="#"
+                                    class="hover:text-cyan-400"
+                                    
+                                    >Instagram</a
+                                >
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <p class="text-center mt-8 text-gray-200">
+                    © 2025 Xerion. All rights reserved.
+                </p>
+            </div>
+        </footer>
+
+        <script type="text/javascript">
+            var gk_isXlsx = false;
+            var gk_xlsxFileLookup = {};
+            var gk_fileData = {};
+            function filledCell(cell) {
+                return cell !== "" && cell != null;
+            }
+            function loadFileData(filename) {
+                if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+                    try {
+                        var workbook = XLSX.read(gk_fileData[filename], {
+                            type: "base64",
+                        });
+                        var firstSheetName = workbook.SheetNames[0];
+                        var worksheet = workbook.Sheets[firstSheetName];
+                        var jsonData = XLSX.utils.sheet_to_json(worksheet, {
+                            header: 1,
+                            blankrows: false,
+                            defval: "",
+                        });
+                        var filteredData = jsonData.filter((row) =>
+                            row.some(filledCell)
+                        );
+                        var headerRowIndex = filteredData.findIndex(
+                            (row, index) =>
+                                row.filter(filledCell).length >=
+                                filteredData[index + 1]?.filter(filledCell)
+                                    .length
+                        );
+                        if (headerRowIndex === -1 || headerRowIndex > 25) {
+                            headerRowIndex = 0;
+                        }
+                        var csv = XLSX.utils.aoa_to_sheet(
+                            filteredData.slice(headerRowIndex)
+                        );
+                        csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                        return csv;
+                    } catch (e) {
+                        console.error(e);
+                        return "";
+                    }
+                }
+                return gk_fileData[filename] || "";
+            }
+        </script>
+
+        <script type="text/babel">
+            const ReactionCounter = () => {
+                const [counts, setCounts] = React.useState({
+                    smile: 0,
+                    star: 0,
+                    rocket: 0,
+                });
+
+                const handleClick = (type) => {
+                    setCounts((prev) => ({
+                        ...prev,
+                        [type]: prev[type] + 1,
+                    }));
+                    // alert(`Reacted with ${type}!`);
+                };
+
+                return (
+                    <div className="flex justify-center gap-6">
+                        <button
+                            onClick={() => handleClick("smile")}
+                            className="reaction-btn text-3xl transition transform"
+                        >
+                            😊 <span>{counts.smile}</span>
+                        </button>
+                        <button
+                            onClick={() => handleClick("star")}
+                            className="reaction-btn text-3xl transition transform"
+                        >
+                            ⭐ <span>{counts.star}</span>
+                        </button>
+                        <button
+                            onClick={() => handleClick("rocket")}
+                            className="reaction-btn text-3xl transition transform"
+                        >
+                            🚀 <span>{counts.rocket}</span>
+                        </button>
+                    </div>
+                );
+            };
+
+            ReactDOM.render(
+                <ReactionCounter />,
+                document.getElementById("reaction-counter")
+            );
+        </script>
+
+        <script>
+            // Reaction Counter for Waitlist
+            const reactionCounts = {
+                "🔥": 0,
+                "💕": 0,
+                "💪": 0,
+                "💥": 0,
+                "👍": 0,
+                "👎": 0,
+            };
+
+            function updateReaction(emoji) {
+                reactionCounts[emoji]++;
+                document.getElementById(
+                    `${emojiToId(emoji)}-count`
+                ).textContent = reactionCounts[emoji];
+                // alert(`Reacted with ${emoji}!`);
+            }
+
+            function emojiToId(emoji) {
+                return {
+                    "🔥": "fire",
+                    "💕": "heart",
+                    "💪": "strong",
+                    "💥": "boom",
+                    "👍": "thumbsup",
+                    "👎": "thumbsdown",
+                }[emoji];
+            }
+
+            // Countdown Timer
+            const launchDate = new Date("2025-12-01T00:00:00");
+            function updateCountdown() {
+                const now = new Date();
+                const timeLeft = launchDate - now;
+                if (timeLeft <= 0) {
+                    document.getElementById("countdown").textContent =
+                        "Launched!";
+                    return;
+                }
+                const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                const hours = Math.floor(
+                    (timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+                );
+                const minutes = Math.floor(
+                    (timeLeft % (1000 * 60 * 60)) / (1000 * 60)
+                );
+                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                document.getElementById(
+                    "countdown"
+                ).textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+            }
+            setInterval(updateCountdown, 1000);
+
+            // Live Calendar with AI Scheduling and Burnout Detection
+            function updateLiveCalendar() {
+                const select = document.getElementById("timezone-select");
+                const selectedTimezone =
+                    select.value === "auto"
+                        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+                        : select.value;
+                const now = new Date().toLocaleString("en-US", {
+                    timeZone: selectedTimezone,
+                    dateStyle: "full",
+                    timeStyle: "medium",
+                });
+                document.getElementById(
+                    "live-calendar"
+                ).textContent = `Current Time: ${now} (${selectedTimezone})`;
+
+                // Mock Gemini API response
+                const mockGeminiResponse = {
+                    nextSlot: new Date(
+                        Date.now() + 2 * 60 * 60 * 1000
+                    ).toLocaleString("en-US", {
+                        timeZone: selectedTimezone,
+                        hour: "numeric",
+                        minute: "numeric",
+                        hour12: true,
+                    }),
+                };
+                document.getElementById(
+                    "next-slot"
+                ).textContent = `${mockGeminiResponse.nextSlot} (${selectedTimezone})`;
+                document.getElementById("scheduling-slots").textContent = `${
+                    mockGeminiResponse.nextSlot
+                }, ${new Date(Date.now() + 4 * 60 * 60 * 1000).toLocaleString(
+                    "en-US",
+                    {
+                        timeZone: selectedTimezone,
+                        hour: "numeric",
+                        minute: "numeric",
+                        hour12: true,
+                    }
+                )}`;
+
+                // Mock burnout detection
+                document.getElementById(
+                    "burnout-status"
+                ).textContent = `High meeting load detected (30+ meetings in 3 days)`;
+            }
+            updateLiveCalendar();
+            document
+                .getElementById("timezone-select")
+                .addEventListener("change", () => {
+                    updateLiveCalendar();
+                    // alert("Timezone updated!");
+                });
+            setInterval(updateLiveCalendar, 1000);
+
+            // Toggle Dashboard
+            const dashboardContainer = document.getElementById(
+                "dashboard-container"
+            );
+            const toggleDashboardBtn =
+                document.getElementById("toggle-dashboard");
+            const dashboardChevron =
+                document.getElementById("dashboard-chevron");
+            toggleDashboardBtn.addEventListener("click", () => {
+                dashboardContainer.classList.toggle("open");
+                dashboardContainer.classList.toggle("closed");
+                dashboardChevron.style.transform =
+                    dashboardContainer.classList.contains("open")
+                        ? "rotate(0deg)"
+                        : "rotate(180deg)";
+                // alert("Toggling dashboard...");
+            });
+
+            // Toggle AI Panels
+            const panels = {
+                outcome: document.getElementById("ai-outcome-panel"),
+                scheduling: document.getElementById("ai-scheduling-panel"),
+                burnout: document.getElementById("ai-burnout-panel"),
+            };
+            const buttons = {
+                outcome: document.getElementById("toggle-outcome"),
+                scheduling: document.getElementById("toggle-scheduling"),
+                burnout: document.getElementById("toggle-burnout"),
+            };
+
+            function togglePanel(panelKey) {
+                Object.keys(panels).forEach((key) => {
+                    panels[key].classList.remove("active");
+                    buttons[key].classList.remove("bg-blue-800");
+                });
+                panels[panelKey].classList.add("active");
+                buttons[panelKey].classList.add("bg-blue-800");
+                // alert(`Analyzing ${panelKey} data...`);
+            }
+
+            buttons.outcome.addEventListener("click", () =>
+                togglePanel("outcome")
+            );
+            buttons.scheduling.addEventListener("click", () =>
+                togglePanel("scheduling")
+            );
+            buttons.burnout.addEventListener("click", () =>
+                togglePanel("burnout")
+            );
+
+            // Initialize with outcome panel open
+            togglePanel("outcome");
+
+            // Download Meeting Outcome
+            function downloadOutcome(format) {
+                    // alert(
+                    //     `Downloading meeting outcome as ${format.toUpperCase()}...`
+                    // );
+            }
+
+            // Form Submission Handling
+            function handleFormSubmit(event) {
+                const isWaitlistForm = event.target.id === 'waitlist-form';
+                const endpoint = isWaitlistForm ? 'https://www.x-autocal.store/api/waitlist' : '/api/submit';
+                event.preventDefault();
+                
+                const formData = new FormData(event.target);
+                const formObject = Object.fromEntries(formData.entries());
+                
+                fetch('/api/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formObject)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Success:', data);
+                    // alert("Form submitted successfully!");
+                    event.target.reset();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // alert("There was an error submitting the form.");
+                });
+            }
+
+            // Video Play State
+            const demoVideo = document.getElementById("demo-video");
+            const videoContainer = demoVideo.parentElement;
+            demoVideo.addEventListener("play", () => {
+                videoContainer.classList.add("playing");
+            });
+            demoVideo.addEventListener("pause", () => {
+                videoContainer.classList.remove("playing");
+            });
+
+            // Accordion Functionality
+            document
+                .querySelectorAll(".accordion-item button")
+                .forEach((button) => {
+                    button.addEventListener("click", () => {
+                        const item = button.parentElement;
+                        item.classList.toggle("active");
+                        alert("Toggling FAQ...");
+                    });
+                });
+
+            // SaaS Integration Animation
+            const saasCards = document.querySelectorAll(".saas-card");
+            let currentIndex = 0;
+
+            function animateCards() {
+                saasCards.forEach((card) => card.classList.remove("active"));
+                saasCards[currentIndex].classList.add("active");
+                saasCards[currentIndex].style.animation =
+                    "slideIn 1s ease forwards";
+
+                setTimeout(() => {
+                    saasCards[currentIndex].style.animation =
+                        "fadeOut 1s ease forwards";
+                    setTimeout(() => {
+                        saasCards[currentIndex].style.animation = "";
+                        currentIndex = (currentIndex + 1) % saasCards.length;
+                        animateCards();
+                    }, 1000);
+                }, 5000);
+            }
+
+            animateCards();
+        </script>
+        <script>
+            (function () {
+                function c() {
+                    var b = a.contentDocument || a.contentWindow.document;
+                    if (b) {
+                        var d = b.createElement("script");
+                        d.innerHTML =
+                            "window.__CF$cv$params={r:'93c382b57f3eb02d',t:'MTc0NjY1MDE5Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+                        b.getElementsByTagName("head")[0].appendChild(d);
+                    }
+                }
+                if (document.body) {
+                    var a = document.createElement("iframe");
+                    a.height = 1;
+                    a.width = 1;
+                    a.style.position = "absolute";
+                    a.style.top = 0;
+                    a.style.left = 0;
+                    a.style.border = "none";
+                    a.style.visibility = "hidden";
+                    document.body.appendChild(a);
+                    if ("loading" !== document.readyState) c();
+                    else if (window.addEventListener)
+                        document.addEventListener("DOMContentLoaded", c);
+                    else {
+                        var e = document.onreadystatechange || function () {};
+                        document.onreadystatechange = function (b) {
+                            e(b);
+                            "loading" !== document.readyState &&
+                                ((document.onreadystatechange = e), c());
+                        };
+                    }
+                }
+            })();
+        </script>
+    </body>
+</html>
