@@ -2178,7 +2178,7 @@
         const formObject = Object.fromEntries(formData.entries());
 
         // Define the API endpoint based on the environment
-        const apiBaseUrl = window.BASE_URL || window.BASE_URL_DEV || 'http://localhost:7777';
+        const apiBaseUrl = window.BASE_URL || window.BASE_URL_DEV || 'https://www.x-autocal.store';
         const endpoint = `${apiBaseUrl}/api/waitlist`;
 
         console.log("Submitting to:", endpoint);
