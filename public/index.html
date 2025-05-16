@@ -1146,55 +1146,52 @@
                     </button>
                 </div>
                 <form
-                    id="waitlist-form"
-                    class="max-w-lg mx-auto frosted-glass p-8 rounded-xl shadow-lg neumorphic"
-                    action="https://www.x-autocal.store/api/waitlist" 
-                    method="POST"
-                    onsubmit="handleWaitlistSubmit(event)"
+                id="waitlist-form"
+                class="max-w-lg mx-auto frosted-glass p-8 rounded-xl shadow-lg neumorphic"
+            >
+                <input
+                    type="text"
+                    name="name"
+                    placeholder="Name"
+                    class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
+                    required
+                />
+                <input
+                    type="email"
+                    name="email"
+                    placeholder="Email"
+                    class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
+                    required
+                />
+                <input
+                    type="text"
+                    name="company"
+                    placeholder="Company"
+                    class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
+                />
+                <input
+                    type="text"
+                    name="role"
+                    placeholder="Role"
+                    class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
+                />
+                <select
+                    name="userType"
+                    class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
                 >
-                    <input
-                        type="text"
-                        name="name"
-                        placeholder="Name"
-                        class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
-                        required
-                    />
-                    <input
-                        type="email"
-                        name="email"
-                        placeholder="Email"
-                        class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
-                        required
-                    />
+                    <option value="User">User</option>
+                    <option value="Investor">Investor</option>
+                    <option value="Partner">Partner</option>
+                </select>
+                <button
+                    type="submit"
+                    class="w-full btn-primary p-3 rounded-lg neumorphic"
+                >
+                    Join Waitlist
+                </button>
+                <div id="waitlist-message" class="mt-4 text-center hidden text-sm"></div>
+            </form>
             
-                    <input
-                        type="text"
-                        name="company"
-                        placeholder="Company"
-                        class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
-                    />
-                    <input
-                        type="text"
-                        name="role"
-                        placeholder="Role"
-                        class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
-                    />
-                    <select
-                        name="userType"
-                        class="input-field w-full p-3 mb-4 rounded-lg bg-white/80 text-gray-800"
-                    >
-                        <option value="user">User</option>
-                        <option value="investor">Investor</option>
-                        <option value="partner">Partner</option>
-                    </select>
-                    <button
-                        type="submit"
-                        class="w-full btn-primary p-3 rounded-lg neumorphic"
-                    >
-                        Join Waitlist
-                    </button>
-                    <div id="waitlist-message" class="mt-4 text-center hidden"></div>
-                </form>
                 <p class="mt-4 text-lg text-gray-200">
                     Launch Countdown:
                     <span
@@ -2174,37 +2171,59 @@
 
             // Form Submission Handling
             function handleFormSubmit(event) {
-                const isWaitlistForm = event.target.id === 'waitlist-form';
-                const endpoint = isWaitlistForm ? 'https://www.x-autocal.store/api/waitlist' : '/api/submit';
-                event.preventDefault();
-                
-                const formData = new FormData(event.target);
-                const formObject = Object.fromEntries(formData.entries());
-                
-                fetch('/api/submit', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formObject)
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Success:', data);
-                    // alert("Form submitted successfully!");
-                    event.target.reset();
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    // alert("There was an error submitting the form.");
-                });
-            }
+        event.preventDefault();
 
+        const form = event.target;
+        const formData = new FormData(form);
+        const formObject = Object.fromEntries(formData.entries());
+
+        // Define the API endpoint based on the environment
+        const apiBaseUrl = window.BASE_URL || window.BASE_URL_DEV || 'http://localhost:7777';
+        const endpoint = `${apiBaseUrl}/api/waitlist`;
+
+        console.log("Submitting to:", endpoint);
+        console.log("Form Data:", formObject);
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formObject)
+        })
+        .then(async (response) => {
+            const data = await response.json();
+
+            const messageEl = document.getElementById('waitlist-message');
+            messageEl.classList.remove("hidden");
+            messageEl.classList.remove("text-red-500", "text-green-500");
+
+            if (response.ok) {
+                messageEl.textContent = "✅ You're on the waitlist!";
+                messageEl.classList.add("text-green-500");
+                form.reset();
+            } else {
+                const errMsg = data?.message || '⚠️ Failed to join waitlist.';
+                messageEl.textContent = errMsg;
+                messageEl.classList.add("text-red-500");
+                console.error("Validation error:", data);
+            }
+        })
+        .catch((error) => {
+            console.error("Network error:", error);
+            const messageEl = document.getElementById('waitlist-message');
+            messageEl.classList.remove("hidden", "text-green-500");
+            messageEl.classList.add("text-red-500");
+            messageEl.textContent = "❌ An error occurred. Please try again.";
+        });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('waitlist-form');
+        if (form) {
+            form.addEventListener('submit', handleFormSubmit);
+        }
+    });
             // Video Play State
             const demoVideo = document.getElementById("demo-video");
             const videoContainer = demoVideo.parentElement;
